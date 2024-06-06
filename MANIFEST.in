@@ -1,0 +1,4 @@
+include README.md
+recursive-include octoprint_OpusPnP/templates *
+recursive-include octoprint_OpusPnP/translations *
+recursive-include octoprint_OpusPnP/static *

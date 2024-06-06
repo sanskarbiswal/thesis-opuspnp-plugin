@@ -1,0 +1,54 @@
+<div id="control-OpusPnP-wrapper">
+
+    <div id="control-OpusPnP-toggles" class="toggle-div">
+        <h1>Toggle Control Bar</h1>
+        <div class="toggle-child">
+            <div class="t1">Actuator</div>
+            <!-- Rounded switch -->
+            <label class="switch">
+                <input type="checkbox" id="toggle-actuator">
+                <span class="slider round"></span>
+            </label>
+            <button id="send_actuator" class="btn_basic">Send</button>
+        </div>
+        {# <hr> #}
+        <div class="toggle-child">
+            <div class="t1">Rig</div>
+            <!-- Rounded switch -->
+            <label class="switch">
+                <input type="checkbox" id="toggle-rig">
+                <span class="slider round"></span>
+            </label>
+            <button id="send_rig" class="btn_basic">Send</button>
+        </div>
+    </div>
+    <div id="control-OpusPnP-rotation" class="rotation-div">
+        <h1>Rotation Control</h1>
+        <div>
+            <label for="rotation">Rotation</label>
+            <span id="direction">
+                <div class="Row">
+                    <div class="Column">
+                        <input type="number" id="angle-input" class="Input">
+                    </div>
+                    <div class="Column">Left</div>
+                    <div class="Column">
+                        <label class="switch">
+                            <input type="checkbox" id="rot-direction">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="Column">Right</div>
+                    <button id="send_rotation" class="btn_basic Column">Send</button>
+                </div>
+                {# <input type="button" id="inc-left" value="Left" class="btn_basic">
+                <input type="button" id="inc-right" value="Right" class="btn_basic"> #}
+            </span>
+        </div>
+    </div>
+    <hr>
+    <div class="control-opus-cv">
+        <h1>Computer Vision Module - Hy3DPnP</h1>
+    </div>
+
+</div>
