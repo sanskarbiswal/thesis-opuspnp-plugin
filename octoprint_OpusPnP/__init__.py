@@ -10,31 +10,71 @@ from __future__ import absolute_import
 # Take a look at the documentation on what other plugin mixins are available.
 
 import octoprint.plugin
+import flask
+import serial, threading
 
-class OpuspnpPlugin(octoprint.plugin.SettingsPlugin,
+class OpuspnpPlugin(
+    octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.TemplatePlugin,
-    octoprint.plugin.StartupPlugin
+    octoprint.plugin.StartupPlugin,
+    octoprint.plugin.SimpleApiPlugin
 ):
+    
+    def __init__(self):
+        self.ser = None
+        self.recv_thread = None
+        self.keep_running = False
+
     def on_after_startup(self):
+        self._logger.info(50*"#")
         self._logger.info("OpusPnP Plugin Started")
+        self._logger.info(50*"#")
+        try:
+            # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+            self.ser = serial.Serial('COM19', 9600, timeout=1)
+            self.keep_running = True
+            self.recv_thread = threading.Thread(target=self.recv_data)
+            self.recv_thread.start()
+            self._logger.info("Connected to the serial port")
+        except serial.SerialException as e:
+            self._logger.error(f"Error: {e}\nCould not connect to the serial port")
+
+    def on_shutdown(self):
+        self.keep_running = False
+        if self.recv_thread is not None:
+            self.recv_thread.join()
+        if self.ser is not None:
+            self.ser.close()
 
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return {
+        return dict(
             # put your plugin's default settings here
-        }
+            feeder_X = 0,
+            feeder_Y = 0,
+            feeder_next_Z = 0,
+            feeder_pick_Z = 0,
+            feeder_offset = 0,
+            camera_X = 0,
+            camera_Y = 0,
+            camera_Z = 0,
+        )
 
     ##~~ AssetPlugin mixin
-    # def get_template_configs(self):
-    #     return [
-    #         dict(
-    #             type="generic",
-    #             custom_bindings=True,
-    #             template="OpusPnP.jinja2",
-    #         )
-    #     ]
+    def get_template_configs(self):
+        return [
+            # dict(
+            #     type="generic",
+            #     custom_bindings=True,
+            #     template="OpusPnP_tab.jinja2",
+            # ),
+            dict(
+                type="settings",
+                custom_bindings=False
+            )
+        ]
 
     def get_assets(self):
         # Define your plugin's asset files to automatically include in the
@@ -46,6 +86,36 @@ class OpuspnpPlugin(octoprint.plugin.SettingsPlugin,
         }
 
     ##~~ Softwareupdate hook
+    def get_api_commands(self):
+        return dict(
+            send_actuator=["value"],
+            send_rig=["value"],
+            send_uart=["message"]
+        )
+    
+    def on_api_command(self, command, data):
+        self._logger.info(f"Received command: {command}, with data: {data}")
+        if command == "send_actuator":
+            value = "ON" if data["value"] else "OFF"
+            flask.jsonify(response=f"Actuator is now {value}")
+            self._logger.info("Actuator is now %s" % value)
+        elif command == "send_rig":
+            value = "ON" if data["value"] else "OFF" 
+        elif command == "send_uart":
+            message = int(data["message"])
+            self.send_data(message)
+
+    def send_data(self, message):
+        if self.ser is not None:
+            self.ser.write(f"{message}\n".encode())
+            self._logger.info(f"Sent data: {message}")
+    
+    def recv_data(self):
+        while self.keep_running:
+            if self.ser.in_waiting > 0 and self.ser is not None:
+                data = self.ser.readline().decode().strip()
+                self._logger.info(f"Received data: {data}")
+                
 
     def get_update_information(self):
         # Define the configuration for your plugin to use with the Software Update
@@ -66,6 +136,9 @@ class OpuspnpPlugin(octoprint.plugin.SettingsPlugin,
                 "pip": "https://github.com/sanskarbiswal/OpusPnP_plugin/archive/{target_version}.zip",
             }
         }
+    
+    def process_gcode(self, comm, line, *args, **kwargs):
+        self._logger.info(f"Received line: {line}")
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
@@ -85,5 +158,6 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
+        "octoprint.ui.tab": __plugin_implementation__.get_template_configs,
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
     }

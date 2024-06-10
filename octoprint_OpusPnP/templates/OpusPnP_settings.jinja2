@@ -1,0 +1,43 @@
+<form>
+    <div>
+        <h3>Component Feeder</h1>
+        <div class="Row">
+            <div class="Column">
+                X
+                <input type="number" name="feederX" data-bind="value: settings.plugins.OpusPnP.feeder_X">
+            </div>
+            <div class="Column">
+                Y
+                <input type="number" name="feederY" data-bind="value: settings.plugins.OpusPnP.feeder_Y">
+            </div>
+        </div>
+        <div class="Row">
+            <div class="Column">Z - Feed New Component</div>
+            <input type="number" name="feeder_next_Z" class="Column" data-bind="value: settings.plugins.OpusPnP.feeder_next_Z">
+        </div>
+        <div class="Row">
+            <div class="Column">Z - Pick New Component</div>
+            <input type="number" name="feeder_pick_Z" class="Column" data-bind="value: settings.plugins.OpusPnP.feeder_pick_Z">
+        </div>
+        <div class="Row">
+            <div class="Column">Feeder Pitch (Offset)</div>
+            <input type="number" name="feeder_offset" data-bind="value: settings.plugins.OpusPnP.feeder_offset">
+        </div>
+        <hr>
+        <h3>Camera Position</h3>
+        <div class="Row">
+            <div class="Column">
+                X
+                <input type="number" name="cameraX" data-bind="value: settings.plugins.OpusPnP.camera_X">
+            </div>
+            <div class="Column">
+                Y
+                <input type="number" name="cameraY" data-bind="value: settings.plugins.OpusPnP.camera_Y">
+            </div>
+            <div class="Column">
+                Z
+                <input type="number" name="cameraZ" data-bind="value: settings.plugins.OpusPnP.camera_Z">
+            </div>  
+        </div>
+    </div>
+</form>

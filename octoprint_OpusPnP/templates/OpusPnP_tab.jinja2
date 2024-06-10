@@ -1,5 +1,4 @@
 <div id="control-OpusPnP-wrapper">
-
     <div id="control-OpusPnP-toggles" class="toggle-div">
         <h1>Toggle Control Bar</h1>
         <div class="toggle-child">
@@ -31,14 +30,14 @@
                     <div class="Column">
                         <input type="number" id="angle-input" class="Input">
                     </div>
-                    <div class="Column">Left</div>
+                    <div class="Column align-Right">Left</div>
                     <div class="Column">
                         <label class="switch">
-                            <input type="checkbox" id="rot-direction">
+                            <input type="checkbox" id="dir-rotation">
                             <span class="slider round"></span>
                         </label>
                     </div>
-                    <div class="Column">Right</div>
+                    <div class="Column align-Left">Right</div>
                     <button id="send_rotation" class="btn_basic Column">Send</button>
                 </div>
                 {# <input type="button" id="inc-left" value="Left" class="btn_basic">
@@ -47,8 +46,16 @@
         </div>
     </div>
     <hr>
+    <div class="control-opus-uart">
+        <h1>UART Transceiver - Hy3DPnP</h1>
+        <div>
+            <label for="uart_message">Message</label>
+            <input type="number" id="uart_message" min="100">
+            <button id="send_uart_message" class="btn_basic">Send</button>
+        </div>
+    </div>
+    <hr>
     <div class="control-opus-cv">
         <h1>Computer Vision Module - Hy3DPnP</h1>
     </div>
-
 </div>

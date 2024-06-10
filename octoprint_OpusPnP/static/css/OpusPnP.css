@@ -42,10 +42,22 @@
     display:block;
     border:none;
     border-bottom:1px solid #ccc;
-    width:100%;
+    width:70%;
     text-align: center;
     align-self: center;
     align-content: center;
+}
+
+.align-Right {
+    text-align: right;
+}
+
+.align-Left {
+    text-align: left;
+}
+
+.align-Center {
+    text-align: center;
 }
 
 .Row {
@@ -57,7 +69,6 @@
 .Column {
     display: table-cell;
     align-content: center;
-    text-align: center;
     /* background-color: red; */
 }
 
