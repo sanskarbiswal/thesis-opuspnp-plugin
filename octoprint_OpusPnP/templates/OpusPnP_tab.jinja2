@@ -1,57 +1,68 @@
 <div id="control-OpusPnP-wrapper">
-    <div id="control-OpusPnP-toggles" class="toggle-div">
-        <h1>Toggle Control Bar</h1>
-        <div class="toggle-child">
-            <div class="t1">Actuator</div>
-            <!-- Rounded switch -->
-            <label class="switch">
-                <input type="checkbox" id="toggle-actuator">
-                <span class="slider round"></span>
-            </label>
-            <button id="send_actuator" class="btn_basic">Send</button>
+    <h1 style="text-align: center;"><u>Hy3DPnP Plugin</u></h1>
+    <div class="control-opus-uart">
+        <h1>UART Transceiver - Hy3DPnP</h1>
+        <div class="Row">
+            <div class="Column">Status</div>
+            <div class="Column">Toggle Connection</div>
         </div>
-        {# <hr> #}
-        <div class="toggle-child">
-            <div class="t1">Rig</div>
-            <!-- Rounded switch -->
-            <label class="switch">
-                <input type="checkbox" id="toggle-rig">
-                <span class="slider round"></span>
-            </label>
-            <button id="send_rig" class="btn_basic">Send</button>
+        <div class="Row">
+            <div class="Column">
+                <!-- Rounded switch -->
+                <label class="switch">
+                    <input type="checkbox" id="toggle_uart">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="Column">
+                <button id="toggle_uart_connection" class="btn_basic">Toggle</button>
+            </div>
         </div>
-    </div>
-    <div id="control-OpusPnP-rotation" class="rotation-div">
-        <h1>Rotation Control</h1>
+        <hr>
         <div>
-            <label for="rotation">Rotation</label>
-            <span id="direction">
-                <div class="Row">
-                    <div class="Column">
-                        <input type="number" id="angle-input" class="Input">
-                    </div>
-                    <div class="Column align-Right">Left</div>
-                    <div class="Column">
-                        <label class="switch">
-                            <input type="checkbox" id="dir-rotation">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="Column align-Left">Right</div>
-                    <button id="send_rotation" class="btn_basic Column">Send</button>
-                </div>
-                {# <input type="button" id="inc-left" value="Left" class="btn_basic">
-                <input type="button" id="inc-right" value="Right" class="btn_basic"> #}
-            </span>
+            <label for="uart_message">UART Control Message</label>
+            <select id="uart_message">
+                <option value="100">100 - Valve OFF</option>
+                <option value="101">101 - Valve ON</option>
+                <option value="200">200 - Rig Home</option>
+                <option value="201">201 - Rig Active</option>
+                <option value="900">900 - Get Status</option>
+            </select>
+            <button id="send_uart_message" class="btn_basic">Send</button>
+        </div>
+        <div>
+            <label for="angle_input">Rig Orientation</label>
+            <input id="angle_input" type="number" placeholder="Degrees of Rotation" min="-360" max="360">
+            <button id="send_angle_input" class="btn_basic">Send</button>
         </div>
     </div>
     <hr>
-    <div class="control-opus-uart">
-        <h1>UART Transceiver - Hy3DPnP</h1>
-        <div>
-            <label for="uart_message">Message</label>
-            <input type="number" id="uart_message" min="100">
-            <button id="send_uart_message" class="btn_basic">Send</button>
+    <div id="control-OpusPnP-toggles">
+        PnP Modules: Status
+        <br>
+        <div class="Row">
+            <div class="Column">
+                Actuator
+            </div>
+            <div class="Column">
+                Rig
+            </div>
+        </div>
+        <div class="Row">
+            <div class="Column">
+                <!-- Rounded switch -->
+                <label class="switch">
+                    <input type="checkbox" id="toggle-actuator" disabled>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="Column">
+                <!-- Rounded switch -->
+                <label class="switch">
+                    <input type="checkbox" id="toggle-rig" disabled>
+                    <span class="slider round"></span>
+                </label>
+            </div>
         </div>
     </div>
     <hr>

@@ -6,9 +6,8 @@
  */
 $(function() {
 
-    self.ActuatorState = false;
-    self.RigState = false;
     self.uartValue = "";
+    self.angleValue = "";
 
 
     function OpuspnpViewModel(parameters) {
@@ -16,7 +15,7 @@ $(function() {
 
         // assign the injected parameters, e.g.:
         // self.loginStateViewModel = parameters[0];
-        // self.settingsViewModel = parameters[1];
+        self.settingsViewModel = parameters[0];
 
         // TODO: Implement your plugin's view model here.
     }
@@ -33,26 +32,68 @@ $(function() {
         elements: [ /* ... */ ]
     });
 
-    function sendActuator() {
-        var value = $("#toggle-actuator").is(":checked");
-        self.ActuatorState = value;
-        OctoPrint.simpleApiCommand("OpusPnP", "send_actuator", { "value": value });
-    }
-
-    function sendRig() {
-        var value = $("#toggle-rig").is(":checked");
-        self.RigState = value;
-        OctoPrint.simpleApiCommand("OpusPnP", "send_rig", { "value": value });
+    function handlePluginMessage(plugin, data) {
+        // if (plugin !== "uart_communication") {
+        //     return;
+        // }
+        if (data.valveState !== undefined) {
+            $("#toggle-actuator").prop("checked", data.valveState);
+        }
+        if (data.rigState !== undefined) {
+            $("#toggle-rig").prop("checked", data.rigState);
+        }
+        if (data.connectionStatus !== undefined) {
+            $("#toggle_uart").prop("checked", data.connectionStatus);
+        }
     }
 
     function sendUARTCommand() {
         var message = $("#uart_message").val();
         self.uartValue = message;
-        console.log(self.uartValue);
         OctoPrint.simpleApiCommand("OpusPnP", "send_uart", { "message": message });
     }
 
-    $("#send_actuator").click(sendActuator);
-    $("#send_rig").click(sendRig);
+    function sendAngleCommand() {
+        var angle = $("#angle_input").val();
+        self.angleValue = angle;
+        OctoPrint.simpleApiCommand("OpusPnP", "send_angle", { "angle": angle });
+    }
+
+    function toggle_uart_connection() {
+        OctoPrint.simpleApiCommand("OpusPnP", "toggle_uart_connection");
+    }
+
     $("#send_uart_message").click(sendUARTCommand);
+    $("#send_angle_input").click(sendAngleCommand);
+    $("#toggle_uart_connection").click(toggle_uart_connection);
+
+    $("#fetch_next_XY").click(function() {
+        OctoPrint.simpleApiCommand("OpusPnP", "fetch_next_XY");
+    });
+
+    $("#fetch_next_Z").click(function() {
+        OctoPrint.simpleApiCommand("OpusPnP", "fetch_next_Z");
+    });
+
+    $("#fetch_pick_XY").click(function() {
+        OctoPrint.simpleApiCommand("OpusPnP", "fetch_pick_XY");
+    });
+
+    $("#fetch_pick_Z").click(function() {
+        OctoPrint.simpleApiCommand("OpusPnP", "fetch_pick_Z");
+    });
+
+    $("#fetch_place_Z").click(function() {
+        OctoPrint.simpleApiCommand("OpusPnP", "fetch_place_Z");
+    });
+
+    $("#fetch_home_Z").click(function() {
+        OctoPrint.simpleApiCommand("OpusPnP", "fetch_home_Z");
+    });
+
+    // Subscribe to plugin messages
+    OctoPrint.coreui.viewmodels.settingsViewModel.pluginMessages.subscribe(function(message) {
+        console.log(message);
+        handlePluginMessage(message.plugin, message.data);
+    });
 });

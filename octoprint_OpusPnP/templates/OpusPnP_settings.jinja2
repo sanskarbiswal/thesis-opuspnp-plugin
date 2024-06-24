@@ -1,23 +1,53 @@
 <form>
     <div>
         <h3>Component Feeder</h1>
+        <h4>Feeder-Next Location</h4>
         <div class="Row">
             <div class="Column">
                 X
-                <input type="number" name="feederX" data-bind="value: settings.plugins.OpusPnP.feeder_X">
+                <input type="number" name="feederNextX" data-bind="value: settings.plugins.OpusPnP.feeder_next_X">
             </div>
             <div class="Column">
                 Y
-                <input type="number" name="feederY" data-bind="value: settings.plugins.OpusPnP.feeder_Y">
+                <input type="number" name="feederNextY" data-bind="value: settings.plugins.OpusPnP.feeder_next_Y">
+            </div>
+            <div class="Column">
+                <button class="btn_basic" id="fetch_next_XY">Get Location</button>
+            </div>
+        </div>
+        <h4>Feeder-Pick Location</h4>
+        <div class="Row">
+            <div class="Column">
+                X
+                <input type="number" name="feederPickX" data-bind="value: settings.plugins.OpusPnP.feeder_pick_X">
+            </div>
+            <div class="Column">
+                Y
+                <input type="number" name="feederPickY" data-bind="value: settings.plugins.OpusPnP.feeder_pick_Y">
+            </div>
+            <div class="Column">
+                <button class="btn_basic" id="fetch_pick_XY">Get Location</button>
             </div>
         </div>
         <div class="Row">
-            <div class="Column">Z - Feed New Component</div>
+            <div class="Column">Z1 - Feed New Component</div>
             <input type="number" name="feeder_next_Z" class="Column" data-bind="value: settings.plugins.OpusPnP.feeder_next_Z">
+            <button class="btn_basic" id="fetch_next_Z">Get Z1 Location</button>
         </div>
         <div class="Row">
-            <div class="Column">Z - Pick New Component</div>
+            <div class="Column">Z2 - Pick New Component</div>
             <input type="number" name="feeder_pick_Z" class="Column" data-bind="value: settings.plugins.OpusPnP.feeder_pick_Z">
+            <button class="btn_basic" id="fetch_pick_Z">Get Z2 Location</button>
+        </div>
+        <div class="Row">
+            <div class="Column">Z3 - Place New Component</div>
+            <input type="number" name="feeder_place_Z" class="Column" data-bind="value: settings.plugins.OpusPnP.feeder_place_Z">
+            <button class="btn_basic" id="fetch_place_Z">Get Z3 Location</button>
+        </div>
+        <div class="Row">
+            <div class="Column">Z0 - Return to Home</div>
+            <input type="number" name="feeder_home_Z" class="Column" data-bind="value: settings.plugins.OpusPnP.feeder_home_Z">
+            <button class="btn_basic" id="fetch_home_Z">Get Z0 Location</button>
         </div>
         <div class="Row">
             <div class="Column">Feeder Pitch (Offset)</div>
