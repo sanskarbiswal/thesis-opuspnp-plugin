@@ -262,11 +262,11 @@ class OpuspnpPlugin(
                 # version check: github repository
                 "type": "github_release",
                 "user": "sanskarbiswal",
-                "repo": "OpusPnP_plugin",
+                "repo": "thesis-opuspnp-plugin",
                 "current": self._plugin_version,
 
                 # update method: pip
-                "pip": "https://github.com/sanskarbiswal/OpusPnP_plugin/archive/{target_version}.zip",
+                "pip": "https://github.com/sanskarbiswal/thesis-opuspnp-plugin/archive/{target_version}.zip",
             }
         }
     
