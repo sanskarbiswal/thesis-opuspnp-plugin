@@ -11,7 +11,7 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 import flask
-import serial, threading, struct
+import serial, threading, struct, platform
 
 class OpuspnpPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -41,7 +41,12 @@ class OpuspnpPlugin(
     def connect_serial(self):
         try:
             # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-            self.ser = serial.Serial('COM19', 9600, timeout=1)
+            if platform.system() == "Windows":
+                self.ser = serial.Serial('COM19', 9600, timeout=1)
+            else:
+                # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+                self.ser = serial.Serial('/dev/ttyUSB   s0', 9600, timeout=1)
+            # self.ser = serial.Serial('COM19', 9600, timeout=1)
             self.keep_running = True
             self.recv_thread = threading.Thread(target=self.recv_data)
             self.recv_thread.start()
@@ -337,7 +342,7 @@ class OpuspnpPlugin(
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
-__plugin_name__ = "Opuspnp Plugin"
+__plugin_name__ = "OpusPnP"
 
 
 # Set the Python version your plugin is compatible with below. Recommended is Python 3 only for all new plugins.

@@ -1,6 +1,6 @@
 # OpusPnP
 
-**TODO:** Describe what your plugin does.
+Plugin for OpusPnP Hybrid 3D Printer. This plugin includes features that can parse custom gcode and interact with firmware running on pnpDRV PCB module.
 
 ## Setup
 
