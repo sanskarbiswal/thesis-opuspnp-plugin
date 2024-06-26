@@ -44,8 +44,8 @@ class OpuspnpPlugin(
             if platform.system() == "Windows":
                 self.ser = serial.Serial('COM19', 9600, timeout=1)
             else:
-                # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-                self.ser = serial.Serial('/dev/ttyUSB   s0', 9600, timeout=1)
+                self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+                # self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
             # self.ser = serial.Serial('COM19', 9600, timeout=1)
             self.keep_running = True
             self.recv_thread = threading.Thread(target=self.recv_data)
