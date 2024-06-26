@@ -310,10 +310,11 @@ class OpuspnpPlugin(
                 self.set_printhead_z_position("Z3")
         
         elif first_word == "PNP_PAUSE":
-            # Pause Execution
+            # Pause Execution for 5s
+            # TODO: Add 2nd word with value for S from GCODE
             # self._logger.info("Pausing Printer Execution")
             # Pause Printer Execution by sending M0 command
-            self._printer.commands("M0")
+            self._printer.commands("G4 S5")
 
         elif first_word == "PNP_FEEDER":
             second_word = cmd.strip().split(" ")[1]
@@ -322,15 +323,16 @@ class OpuspnpPlugin(
                 # TODO: Move to pick X Y location at Z0 height
                 x = self._settings.get_float(["feeder_pick_X"])
                 y = self._settings.get_float(["feeder_pick_Y"])
-                x_new = x + third_word*self._settings.get_float(["feeder_offset"])
+                x_new = x + int(third_word)*self._settings.get_float(["feeder_offset"])
                 self._printer.commands(f"G0 X{x_new} Y{y}")
 
             elif second_word == "NEXT":
                 # TODO: Move to feeder-next X Y location at Z0 height
                 x = self._settings.get_float(["feeder_next_X"])
                 y = self._settings.get_float(["feeder_next_Y"])
-                x_new = x + third_word*self._settings.get_float(["feeder_offset"])
+                x_new = x + int(third_word)*self._settings.get_float(["feeder_offset"])
                 self._printer.commands(f"G0 X{x_new} Y{y}")
+                self._logger.info(f"Moving to Feeder {third_word} at X={x_new}, Y={y}")
 
         elif first_word == "PNP_CAM":
             second_word = cmd.strip().split(" ")[1]
