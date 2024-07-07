@@ -135,4 +135,10 @@
     border-radius: 50%;
   }
 
+  #port_dropdown {
+    width : 80%;
+    height : fit-content;
+    padding: 10px;
+  }
+
 

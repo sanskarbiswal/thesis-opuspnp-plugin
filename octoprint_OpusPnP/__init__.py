@@ -13,12 +13,15 @@ import octoprint.plugin
 import flask
 import serial, threading, struct, platform
 
+from serial.tools import list_ports
+
 class OpuspnpPlugin(
     octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.TemplatePlugin,
     octoprint.plugin.StartupPlugin,
-    octoprint.plugin.SimpleApiPlugin
+    octoprint.plugin.SimpleApiPlugin,
+    octoprint.plugin.BlueprintPlugin,
 ):
     
     def __init__(self):
@@ -32,27 +35,49 @@ class OpuspnpPlugin(
             "PNP_VALVE",
         ]
 
+        self.rig_state = False
+        self.valve_state = False
+
     def on_after_startup(self):
         self._logger.info(50*"#")
         self._logger.info("OpusPnP Plugin Started")
         self._logger.info(50*"#")
-        self.connect_serial()
+        # self.connect_serial()
+        self.update_serial_ports()
 
-    def connect_serial(self):
+    def update_serial_ports(self):
+        com_port_list = list(list_ports.comports())
+        available_ports = [port.device for port in com_port_list]
+        return available_ports
+        # self._logger.info(f"Available Ports: {available_ports}")
+        # self._plugin_manager.send_plugin_message(self._identifier, dict(availablePorts=available_ports))
+
+    def connect_serial(self, port=None):
         try:
-            # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-            if platform.system() == "Windows":
-                self.ser = serial.Serial('COM19', 9600, timeout=1)
-            else:
-                self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-                # self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
-            # self.ser = serial.Serial('COM19', 9600, timeout=1)
+            if port == "" or port is None:
+                raise serial.SerialException(f"Invalid port \"[{port}]\" selected")
+            self.ser = serial.Serial(port, 9600, timeout=1)
             self.keep_running = True
             self.recv_thread = threading.Thread(target=self.recv_data)
             self.recv_thread.start()
             self._logger.info("Connected to the serial port")
         except serial.SerialException as e:
             self._logger.error(f"Error: {e}\nCould not connect to the serial port")
+
+        # try:
+        #     # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        #     if platform.system() == "Windows":
+        #         self.ser = serial.Serial('COM19', 9600, timeout=1)
+        #     else:
+        #         self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        #         # self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+        #     # self.ser = serial.Serial('COM19', 9600, timeout=1)
+        #     self.keep_running = True
+        #     self.recv_thread = threading.Thread(target=self.recv_data)
+        #     self.recv_thread.start()
+        #     self._logger.info("Connected to the serial port")
+        # except serial.SerialException as e:
+        #     self._logger.error(f"Error: {e}\nCould not connect to the serial port")
 
     def disconnect_serial(self):
         self.keep_running = False
@@ -82,6 +107,7 @@ class OpuspnpPlugin(
             camera_X = 0,
             camera_Y = 0,
             camera_Z = 0,
+            get_ports = [],
         )
 
     ##~~ AssetPlugin mixin
@@ -94,7 +120,7 @@ class OpuspnpPlugin(
             # ),
             dict(
                 type="settings",
-                custom_bindings=False
+                custom_bindings=True
             )
         ]
 
@@ -119,6 +145,7 @@ class OpuspnpPlugin(
             fetch_pick_Z=[],
             fetch_place_Z=[],
             fetch_home_Z=[],
+            get_ports=[],
         )
     
     def get_printhead_position(self):
@@ -142,6 +169,38 @@ class OpuspnpPlugin(
 
             self._printer.commands(f"G0 Z{z_val}")
     
+
+    @octoprint.plugin.BlueprintPlugin.route("/ports", methods=["GET"])
+    def get_ports(self):
+        self._logger.info("Fetching available ports")
+        return flask.jsonify(self.update_serial_ports())
+    
+    @octoprint.plugin.BlueprintPlugin.route("/get_connection_status", methods=["GET"])
+    def get_connection_status(self):
+        return flask.jsonify(self.ser is not None)
+    
+    @octoprint.plugin.BlueprintPlugin.route("/get_tool_status", methods=["GET"])
+    def get_tool_status(self):
+        return flask.jsonify({
+            "valve_state": self.valve_state,
+            "rig_state": self.rig_state
+        })
+    
+    @octoprint.plugin.BlueprintPlugin.route("/toggle_uart_connection", methods=["POST"])
+    def toggle_uart_connection(self):
+        data = flask.request.json
+        port = data.get("port")
+
+        if self.ser is None:
+            self.connect_serial(port)
+            self._logger.info(f"Connected to Serial Port: {port}")
+        else:
+            self.disconnect_serial()
+            self._logger.info("Disconnected from the serial port")
+
+        return flask.jsonify(self.ser is not None)
+    
+
     def on_api_command(self, command, data):
         if command == "send_angle":
             angle = float(data["angle"])
@@ -149,15 +208,6 @@ class OpuspnpPlugin(
         elif command == "send_uart":
             message = int(data["message"])
             self.send_data(message)
-
-        elif command == "toggle_uart_connection":
-            self._logger.info("Toggling connection from existing: {}".format(self.ser))
-            if self.ser is None:
-                self.connect_serial()
-                self._plugin_manager.send_plugin_message(self._identifier, dict(connectionStatus=True))
-            else:
-                self.disconnect_serial()
-                self._plugin_manager.send_plugin_message(self._identifier, dict(connectionStatus=False))
         
         elif command == "fetch_next_XY":
             # pos = self._printer.get_current_data()["currentZ"]
@@ -237,7 +287,7 @@ class OpuspnpPlugin(
                 try:
                     data = self.ser.readline().decode().strip()
                     if data.startswith("status"):
-                        valve_state, rig_state = struct.unpack('??', data[7:].encode())
+                        valve_state, rig_state = struct.unpack('cc', data[7:].encode())
                         self._logger.info("Received status: valveState={}, rigState={}".format(valve_state, rig_state))
                         self.update_ui(valve_state, rig_state)
                     elif data.startswith("RESUME"):
@@ -251,7 +301,15 @@ class OpuspnpPlugin(
 
     def update_ui(self, valve_state, rig_state):
         # TODO: Update UI not working
-        self._plugin_manager.send_plugin_message(self._identifier, dict(valveState=valve_state, rigState=rig_state))
+        vState = True if valve_state == b'1' else False
+        rState = True if rig_state == b'1' else False
+        self.valve_state = vState
+        self.rig_state = rState
+        self._plugin_manager.send_plugin_message(self._identifier, {
+            "type": "tool_status",
+            "valve_state": vState,
+            "rig_state": rState
+        })
 
                 
 

@@ -3,14 +3,23 @@
     <div class="control-opus-uart">
         <h1>UART Transceiver - Hy3DPnP</h1>
         <div class="Row">
+            <div class="Column">Port</div>
+            <div class="Column">Refresh</div>
             <div class="Column">Status</div>
             <div class="Column">Toggle Connection</div>
         </div>
         <div class="Row">
             <div class="Column">
+                <label for="port_dropdown">Select USB Port:</label>
+                <select id="port_dropdown"></select>
+            </div>
+            <div class="Column">
+                <button id="refresh_ports" class="btn_basic">Refresh</button>
+            </div>
+            <div class="Column">
                 <!-- Rounded switch -->
                 <label class="switch">
-                    <input type="checkbox" id="toggle_uart">
+                    <input type="checkbox" id="toggle_uart" disabled>
                     <span class="slider round"></span>
                 </label>
             </div>
