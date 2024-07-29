@@ -10,35 +10,35 @@ $(function() {
     self.angleValue = "";
 
 
-    // function OpuspnpViewModel(parameters) {
-    //     var self = this;
+    function OpuspnpViewModel(parameters) {
+        var self = this;
 
-    //     // assign the injected parameters, e.g.:
-    //     // self.loginStateViewModel = parameters[0];
-    //     self.settingsViewModel = parameters[0];
+        // assign the injected parameters, e.g.:
+        // self.loginStateViewModel = parameters[0];
+        self.settingsViewModel = parameters[0];
 
-    //     // TODO: Implement your plugin's view model here.
-    // }
+        // TODO: Implement your plugin's view model here.
+    }
 
-    // /* view model class, parameters for constructor, container to bind to
-    //  * Please see http://docs.octoprint.org/en/master/plugins/viewmodels.html#registering-custom-viewmodels for more details
-    //  * and a full list of the available options.
-    //  */
-    // OCTOPRINT_VIEWMODELS.push({
-    //     construct: OpuspnpViewModel,
-    //     // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
-    //     dependencies: [ "settingsViewModel"/* "loginStateViewModel", "settingsViewModel" */ ],
-    //     // Elements to bind to, e.g. #settings_plugin_OpusPnP, #tab_plugin_OpusPnP, ...
-    //     elements: [ /* ... */ ]
-    // });
+    /* view model class, parameters for constructor, container to bind to
+     * Please see http://docs.octoprint.org/en/master/plugins/viewmodels.html#registering-custom-viewmodels for more details
+     * and a full list of the available options.
+     */
     OCTOPRINT_VIEWMODELS.push({
-        construct: function() {
-            OctoPrint.socket.onMessage("plugin.OpusPnP", function(message) {
-                console.log(message);
-                // handlePluginMessage(message.plugin, message.data);
-            });
-        }
+        construct: OpuspnpViewModel,
+        // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
+        dependencies: [ "settingsViewModel"/* "loginStateViewModel", "settingsViewModel" */ ],
+        // Elements to bind to, e.g. #settings_plugin_OpusPnP, #tab_plugin_OpusPnP, ...
+        elements: [ /* ... */ ]
     });
+    // OCTOPRINT_VIEWMODELS.push({
+    //     construct: function() {
+    //         OctoPrint.socket.onMessage("plugin.OpusPnP", function(message) {
+    //             console.log(message);
+    //             // handlePluginMessage(message.plugin, message.data);
+    //         });
+    //     }
+    // });
     console.log("OpusPnP JS Loaded");
 
     function handlePluginMessage(plugin, data) {
@@ -91,32 +91,89 @@ $(function() {
     $("#send_angle_input").click(sendAngleCommand);
     $("#toggle_uart_connection").click(toggle_uart_connection);
 
-    $("#fetch_next_XY").click(function() {
-        OctoPrint.simpleApiCommand("OpusPnP", "fetch_next_XY");
+    $("#getFeederLoc").click(function() {
+        // $.get(BASEURL+"plugin/OpusPnP/get_pos_feeder", function(response){
+        //     // ret_val = response;
+        // });
+        $.ajax({
+            url: BASEURL+"api/printer/command",
+            type: "POST",
+            data: JSON.stringify({ "command": "M114" }),
+            contentType: "application/json; charset=utf-8",
+            success: function(response) {
+                ret_val = response;
+                console.log("Success" + response);
+            },
+            error: function(response) {
+                console.log("Failure"+ response);
+            }
+        });
     });
 
-    $("#fetch_next_Z").click(function() {
-        OctoPrint.simpleApiCommand("OpusPnP", "fetch_next_Z");
+    $("#getPickLoc").click(function() {
+        $.get(BASEURL+"plugin/OpusPnP/get_pos_pick", function(response){
+            // ret_val = response;
+        });
     });
 
-    $("#fetch_pick_XY").click(function() {
-        OctoPrint.simpleApiCommand("OpusPnP", "fetch_pick_XY");
-    });
-
-    $("#fetch_pick_Z").click(function() {
-        OctoPrint.simpleApiCommand("OpusPnP", "fetch_pick_Z");
+    $("#getCamLoc").click(function() {
+        $.get(BASEURL+"plugin/OpusPnP/get_pos_cam", function(response){
+            // ret_val = response;
+        });
     });
 
     $("#fetch_place_Z").click(function() {
-        OctoPrint.simpleApiCommand("OpusPnP", "fetch_place_Z");
+        $.get(BASEURL+"plugin/OpusPnP/fetch_place_Z", function(response){
+            // ret_val = response;
+        });
     });
 
     $("#fetch_home_Z").click(function() {
-        OctoPrint.simpleApiCommand("OpusPnP", "fetch_home_Z");
+        $.get(BASEURL+"plugin/OpusPnP/fetch_home_Z", function(response){
+            // ret_val = response;
+        });
     });
 
     $("#refresh_ports").click(function() {
         refreshPorts();
+    });
+
+    $("#toggle_cv").click(function() {
+        $.get(BASEURL+"plugin/OpusPnP/toggle_cv", function(response){
+            ret_val = response.cv_status;
+            if (ret_val === "success"){
+                // Show CV Feed (Unhide)
+                console.log("CV Feed: Display");
+                $("#cv_feed").show();
+            }else {
+                // Hide CV Feed
+                console.log("CV Feed: Hide");
+                $("#cv_feed").hide();
+            }
+            // $("#toggle_cv").prop("checked", ret_val);
+        });
+    });
+
+    $("#process_cv_frame").click(function() {
+        var angle = $("#cv_target_angle").val();
+        $.ajax({
+            url: BASEURL+"plugin/OpusPnP/process_cv_frame",
+            type: "POST",
+            data: JSON.stringify({ "angle": angle }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            success: function(response) {
+                ret_val = response;
+                var delta = ret_val.delta_angle;
+                var angle = ret_val.current_angle;
+                var offset = ret_val.offset;
+                console.log("Delta Angle: " + delta, "Current Angle: " + angle, "Offset: " + offset);
+
+            },
+            error: function(response) {
+                console.log(response);
+            }
+        });
     });
 
     // Subscribe to plugin messages
@@ -125,7 +182,7 @@ $(function() {
     //     handlePluginMessage(message.plugin, message.data);
     // });
     OctoPrint.socket.onMessage("plugin.OpusPnP", function(message) {
-        console.log(message);
+        console.log("Opus Pluing Message"+ message);
     });
 
     // COM Port Controls
@@ -151,7 +208,6 @@ $(function() {
 
     function getToolStatus() {
         connected = $("#toggle_uart").prop("checked");
-        console.log(connected);
         if (!connected) {
             return;
         }

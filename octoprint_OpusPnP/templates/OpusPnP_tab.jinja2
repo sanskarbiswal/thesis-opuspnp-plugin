@@ -77,5 +77,24 @@
     <hr>
     <div class="control-opus-cv">
         <h1>Computer Vision Module - Hy3DPnP</h1>
+        <div class="Row">
+            <div class="Column">
+                <button id="toggle_cv" class="btn_basic">Toggle CV Module</button>
+            </div>
+            <div class="Column">
+                <input type="number" id="cv_target_angle" placeholder="Target Angle" min="-360" max="360">
+                <button id="process_cv_frame" class="btn_basic">Process Frame</button>
+            </div>
+        </div>
+        <div class="Row">
+            <img id="cv_feed" src="http://127.0.0.1:10010/video_feed" alt="PnP Orientation Camera Feed">
+            <script>
+            function update_frame(){
+                var cv_frame = document.getElementById("cv_feed");
+                cv_frame.src = "http://127.0.0.1:10010/video_feed";
+            }
+            setInterval(update_frame, 100);
+            </script>
+        </div>
     </div>
 </div>

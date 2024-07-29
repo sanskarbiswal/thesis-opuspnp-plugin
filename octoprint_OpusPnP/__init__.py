@@ -15,6 +15,8 @@ import serial, threading, struct, platform
 
 from serial.tools import list_ports
 
+from . import hy3d_computervision as hy3d_cv
+
 class OpuspnpPlugin(
     octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
@@ -38,11 +40,17 @@ class OpuspnpPlugin(
         self.rig_state = False
         self.valve_state = False
 
+        self.detector = hy3d_cv.SMDComponentDetector(debug=True)
+        self.cv_thread = threading.Thread(target=self.detector.start_flask_stream)
+        self.cv_thread.daemon = True
+        self.cv_cam_on = False
+
     def on_after_startup(self):
         self._logger.info(50*"#")
         self._logger.info("OpusPnP Plugin Started")
         self._logger.info(50*"#")
         # self.connect_serial()
+        self.cv_thread.start()
         self.update_serial_ports()
 
     def update_serial_ports(self):
@@ -64,21 +72,6 @@ class OpuspnpPlugin(
         except serial.SerialException as e:
             self._logger.error(f"Error: {e}\nCould not connect to the serial port")
 
-        # try:
-        #     # self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-        #     if platform.system() == "Windows":
-        #         self.ser = serial.Serial('COM19', 9600, timeout=1)
-        #     else:
-        #         self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-        #         # self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
-        #     # self.ser = serial.Serial('COM19', 9600, timeout=1)
-        #     self.keep_running = True
-        #     self.recv_thread = threading.Thread(target=self.recv_data)
-        #     self.recv_thread.start()
-        #     self._logger.info("Connected to the serial port")
-        # except serial.SerialException as e:
-        #     self._logger.error(f"Error: {e}\nCould not connect to the serial port")
-
     def disconnect_serial(self):
         self.keep_running = False
         if self.recv_thread is not None:
@@ -88,6 +81,9 @@ class OpuspnpPlugin(
             self.ser = None
 
     def on_shutdown(self):
+        self.detector.stop()
+        self.cv_cam_on = False
+        self._logger.info("Computer Vision Stopped")
         self.disconnect_serial()
 
     ##~~ SettingsPlugin mixin
@@ -107,7 +103,6 @@ class OpuspnpPlugin(
             camera_X = 0,
             camera_Y = 0,
             camera_Z = 0,
-            get_ports = [],
         )
 
     ##~~ AssetPlugin mixin
@@ -120,7 +115,7 @@ class OpuspnpPlugin(
             # ),
             dict(
                 type="settings",
-                custom_bindings=True
+                custom_bindings=False
             )
         ]
 
@@ -138,14 +133,6 @@ class OpuspnpPlugin(
         return dict(
             send_angle=["angle"],
             send_uart=["message"],
-            toggle_uart_connection=[],
-            fetch_next_XY=[],
-            fetch_next_Z=[],
-            fetch_pick_XY=[],
-            fetch_pick_Z=[],
-            fetch_place_Z=[],
-            fetch_home_Z=[],
-            get_ports=[],
         )
     
     def get_printhead_position(self):
@@ -200,10 +187,63 @@ class OpuspnpPlugin(
 
         return flask.jsonify(self.ser is not None)
     
+    @octoprint.plugin.BlueprintPlugin.route("/toggle_cv", methods=["GET"])
+    def toggle_cv(self):
+        if not self.cv_cam_on:
+            dev = self.detector.list_vc_devices()
+            try:
+                self.detector.connect(dev[-1])
+                self.cv_cam_on = True
+                self.detector.start()
+                self._logger.info("Computer Vision Started")
+                return flask.jsonify({"cv_status": "success"})
+            except IndexError:
+                self._logger.error("No CV device found")
+                return flask.jsonify({"cv_status": "failed"})
+        else:
+            self.detector.stop()
+            self.cv_cam_on = False
+            self._logger.info("Computer Vision Stopped")
+            return flask.jsonify({"cv_status": "stopped"})
+        
+    @octoprint.plugin.BlueprintPlugin.route("/process_cv_frame", methods=["POST"])
+    def process_cv_frame(self):
+        data = flask.request.json
+        angle = data.get("angle")
+        if self.cv_cam_on:
+            if angle == "":
+                angle = 0
+            angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+            # print(f"Angle: {angle}, Delta: {delta_angle}, Offset: {offset}")
+            return flask.jsonify({
+                "delta_angle": delta_angle,
+                "current_angle": angle,
+                "offset": offset,
+            })
+    
+    @octoprint.plugin.BlueprintPlugin.route("/get_pos_feeder", methods=["GET"])
+    def get_pos_feeder(self):
+        self._printer.commands("M114")
+        log_lines = self._printer.get_current_data()["state"]
+        m114_response = None
+        try:
+            for line in log_lines:
+                print(log_lines[line])
+        except:
+            print("Dump:\n", log_lines)
+            
+        
+        return flask.jsonify({"pos": m114_response})
+    
+    def on_event(self, event, payload):
+        print(f"Event: {event}")
+    
 
     def on_api_command(self, command, data):
         if command == "send_angle":
             angle = float(data["angle"])
+            # Convert angle from UI to steps
+            angle = int(float(angle) * 1600 / 360) # Steps per 360 degree = 1600
             self.send_angle_data(angle)
         elif command == "send_uart":
             message = int(data["message"])
@@ -221,53 +261,6 @@ class OpuspnpPlugin(
                 self._settings.save()
             else:
                 # TODO: Handle when no position is available
-                ...
-        
-        elif command == "fetch_next_Z":
-            pos = self.get_printhead_position()
-            if pos is not None:
-                z = pos.get("z", 0.0)
-                self._settings.set(["feeder_next_Z"], z)
-                self._settings.save()
-            else:
-                ...
-        
-        elif command == "fetch_pick_XY":
-            pos = self.get_printhead_position()
-            if pos is not None:
-                x = pos.get("x", 0.0)
-                y = pos.get("y", 0.0)
-                self._settings.set(["feeder_pick_X"], x)
-                self._settings.set(["feeder_pick_Y"], y)
-                self._settings.save()
-            else:
-                ...
-        
-        elif command == "fetch_pick_Z":
-            pos = self.get_printhead_position()
-            if pos is not None:
-                z = pos.get("z", 0.0)
-                self._settings.set(["feeder_pick_Z"], z)
-                self._settings.save()
-            else:
-                ...
-                
-        elif command == "fetch_place_Z":
-            pos = self.get_printhead_position()
-            if pos is not None:
-                z = pos.get("z", 0.0)
-                self._settings.set(["feeder_place_Z"], z)
-                self._settings.save()
-            else:
-                ...
-        
-        elif command == "fetch_home_Z":
-            pos = self.get_printhead_position()
-            if pos is not None:
-                z = pos.get("z", 0.0)
-                self._settings.set(["feeder_home_Z"], z)
-                self._settings.save()
-            else:
                 ...
 
 
@@ -395,7 +388,31 @@ class OpuspnpPlugin(
         elif first_word == "PNP_CAM":
             second_word = cmd.strip().split(" ")[1]
             # TODO: Implementation for Computer Vision
-            # Cases = START, MOVE, CAPTURE, FIX {angle}, END
+            # Cases = START, POS, CHECK {angle}, END
+            if second_word == "START":
+                # Change Tool to T0
+                self._printer.commands("T0")
+            elif second_word == "POS":
+                ...
+                # TODO: Implement Goto Position from Settings data
+            elif second_word == "CHECK":
+                angle = cmd.strip().split(" ")[2]
+                if self.cv_cam_on:
+                    curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+                    self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
+                    if delta_angle > 1:
+                        tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+                        # Send delta angle to the rig
+                        self.send_angle_data(tx_angle)
+                        # Check if the angle is fixed
+                        curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+                        tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+                        # Send delta angle to the rig
+                        self.send_angle_data(tx_angle)
+            elif second_word == "END":
+                # Change to tool T2
+                self._printer.commands("T2")
+                    
 
 
 
