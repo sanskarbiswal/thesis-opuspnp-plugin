@@ -191,6 +191,7 @@ class OpuspnpPlugin(
     def toggle_cv(self):
         if not self.cv_cam_on:
             dev = self.detector.list_vc_devices()
+            print(dev)
             try:
                 self.detector.connect(dev[-1])
                 self.cv_cam_on = True

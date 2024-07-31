@@ -30,7 +30,7 @@ class SMDComponentDetector:
             self.cap.release()
 
         # Open the new capture
-        self.cap = cv2.VideoCapture(device_idx)
+        self.cap = cv2.VideoCapture(device_idx, cv2.CAP_DSHOW)
         if not self.cap.isOpened():
             print(f"Failed to open device {device_idx}")
             return False
@@ -136,7 +136,7 @@ class SMDComponentDetector:
 
 
     def generate_frame(self):
-        while self.running:
+        while self.running and self.cap != None:
             ret, frame = self.cap.read()
             if not ret:
                 print("Error: Failed to capture frame")
@@ -165,17 +165,17 @@ if __name__ == "__main__":
     detector = SMDComponentDetector()
     devices = detector.list_vc_devices()
     print(f"Found {len(devices)} video capture devices.")
-    try:
-        detector.connect(devices[1])
-        try:
-            th1 = threading.Thread(target=detector.start_flask_stream)
-            th1.start()
-            detector.start()
-            while detector.running:
-                pass
-            print("Exiting...")
-            th1.join()
-        except Exception as e:
-            print(e)
-    except IndexError:
-        print("No video capture devices found.")
+    # try:
+    #     detector.connect(devices[1])
+    #     try:
+    #         th1 = threading.Thread(target=detector.start_flask_stream)
+    #         th1.start()
+    #         detector.start()
+    #         while detector.running:
+    #             pass
+    #         print("Exiting...")
+    #         th1.join()
+    #     except Exception as e:
+    #         print(e)
+    # except IndexError:
+    #     print("No video capture devices found.")
