@@ -191,11 +191,13 @@ class OpuspnpPlugin(
     def toggle_cv(self):
         if not self.cv_cam_on:
             dev = self.detector.list_vc_devices()
-            print(dev)
             try:
-                self.detector.connect(dev[-1])
-                self.cv_cam_on = True
                 self.detector.start()
+                if self.detector.platform == 'Windows':
+                    self.detector.connect(dev[-1])
+                elif self.detector.platform == 'Linux':
+                    self.detector.connect()
+                self.cv_cam_on = True
                 self._logger.info("Computer Vision Started")
                 return flask.jsonify({"cv_status": "success"})
             except IndexError:
@@ -329,17 +331,17 @@ class OpuspnpPlugin(
     
     # def process_gcode(self, comm, line, *args, **kwargs):
     #     self._logger.info(f"Received line: {line}")
-    def on_gcode_received(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
+    def on_gcode_send(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         first_word = cmd.strip().split(" ")[0]
-        if first_word == "PNP_VALVE":
-            valve_state = cmd.strip().split(" ")[1]
-            if valve_state == "1":
-                self.send_data(101)
-                self.update_ui(True, None)
-            else:
-                self.send_data(100)
-                # self.update_ui(False, None)
-        elif first_word == "PNP_RIG":
+        # if first_word == "PNP_VALVE":
+        #     valve_state = cmd.strip().split(" ")[1]
+        #     if valve_state == "1":
+        #         self.send_data(101)
+        #         self.update_ui(True, None)
+        #     else:
+        #         self.send_data(100)
+        #         # self.update_ui(False, None)
+        if first_word == "PNP_RIG":
             cmd_state = cmd.strip().split(" ")[1]
             if cmd_state == "1":
                 self.send_data(201)
@@ -415,6 +417,20 @@ class OpuspnpPlugin(
                 self._printer.commands("T2")
                     
 
+    def on_gcode_received(self, comm, line, *args, **kwargs):
+        if "PNP" in line:
+            cmd = line.split(":")[-1]
+            cmd = cmd.replace('"', '')
+            first_word = cmd.split()[0]
+            if first_word == "PNP_VALVE":
+                valve_state = cmd.strip().split(" ")[1]
+                if valve_state == "1":
+                    self.send_data(101)
+                    self.update_ui(True, None)
+                else:
+                    self.send_data(100)
+
+        return line
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
@@ -436,5 +452,6 @@ def __plugin_load__():
     __plugin_hooks__ = {
         "octoprint.ui.tab": __plugin_implementation__.get_template_configs,
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
-        "octoprint.comm.protocol.gcode.sending": __plugin_implementation__.on_gcode_received
+        "octoprint.comm.protocol.gcode.sending": __plugin_implementation__.on_gcode_send,
+        "octoprint.comm.protocol.gcode.received": __plugin_implementation__.on_gcode_received,
     }

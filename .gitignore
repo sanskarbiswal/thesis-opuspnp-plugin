@@ -7,3 +7,6 @@ dist
 *.egg*
 .DS_Store
 *.zip
+
+dev2.py
+index.html
