@@ -85,6 +85,9 @@ class OpuspnpPlugin(
         self.cv_cam_on = False
         self._logger.info("Computer Vision Stopped")
         self.disconnect_serial()
+        if self.detector.platform == 'Linux':
+            if self.camera is not None:
+                self.camera.stop_pipeline()
 
     ##~~ SettingsPlugin mixin
 
@@ -213,16 +216,20 @@ class OpuspnpPlugin(
     def process_cv_frame(self):
         data = flask.request.json
         angle = data.get("angle")
-        if self.cv_cam_on:
-            if angle == "":
-                angle = 0
-            angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
-            # print(f"Angle: {angle}, Delta: {delta_angle}, Offset: {offset}")
-            return flask.jsonify({
-                "delta_angle": delta_angle,
-                "current_angle": angle,
-                "offset": offset,
-            })
+        try:
+            if self.cv_cam_on:
+                if angle == "":
+                    angle = 0
+                angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+                # print(f"Angle: {angle}, Delta: {delta_angle}, Offset: {offset}")
+                return flask.jsonify({
+                    "delta_angle": delta_angle,
+                    "current_angle": angle,
+                    "offset": offset,
+                })
+        except Exception as e:
+            print(f"Error Process CV Frame: {e}\ncam_status: {self.cv_cam_on}")
+
     
     @octoprint.plugin.BlueprintPlugin.route("/get_pos_feeder", methods=["GET"])
     def get_pos_feeder(self):

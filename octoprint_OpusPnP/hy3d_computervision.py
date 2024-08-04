@@ -71,10 +71,10 @@ class SMDComponentDetector:
                 return True
             return False
         elif self.platform == 'Linux':
-            if self.camera is not None:
-                self.camera.stop_pipeline()
-                return True
-            return False
+            # if self.camera is not None:
+            #     self.camera.stop_pipeline()
+            #     return True
+            return True
 
     def reconnect(self):
         if self.platform == 'Windows':
@@ -102,8 +102,9 @@ class SMDComponentDetector:
         self.disconnect()
 
     def process_frame(self, desired_angle=0):
-        cv2.imwrite("processFrame.jpg", self.cv_frame)
-        _, frame = cv2.imread("processFrame.jpg")
+        frame = self.cv_frame
+        # cv2.imwrite("processFrame.jpg", self.cv_frame)
+        # _, frame = cv2.imread("processFrame.jpg")
         # Crop Image
         height, width = frame.shape[:2]
         crop_size = 400
@@ -194,16 +195,18 @@ class SMDComponentDetector:
                     yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + fdata + b"\r\n")
 
                 if self.platform == 'Linux' and self.camera != None:
-                    frame = self.camera.snap_image(1000)
-                    logging.info("Successfully generated frame")
-                    # Convert frame to opencv frame
-                    self.cv_frame = frame
-                    # ret, buffer = cv2.imencode(".jpg", frame)
-                    # fdata = buffer.tobytes()
-                    yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                    if self.camera.snap_image(1000):
+                        # Convert frame to opencv frame
+                        img = self.camera.get_image()
+                        kernel = np.ones((5, 5), np.uint8) # Create a Kernel for OpenCV erode function
+                        img = cv2.erode(img, kernel, iterations=5)
+                        self.cv_frame = img
+                        # ret, buffer = cv2.imencode(".jpg", frame)
+                        # fdata = buffer.tobytes()
+                        yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + img + b'\r\n')
         except Exception as e:
-            print("Exception")
+            print("Exception ", e)
         finally:
             print("Stream Closed!!!")
 
