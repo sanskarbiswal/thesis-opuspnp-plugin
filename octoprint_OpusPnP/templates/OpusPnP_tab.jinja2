@@ -87,14 +87,7 @@
             </div>
         </div>
         <div class="Row">
-            <img id="cv_feed" src="http://127.0.0.1:10010/video_feed" alt="PnP Orientation Camera Feed">
-            <script>
-            function update_frame(){
-                var cv_frame = document.getElementById("cv_feed");
-                cv_frame.src = "http://127.0.0.1:10010/video_feed";
-            }
-            setInterval(update_frame, 100);
-            </script>
+            <iframe id="cv_feed" src="http://opuspi:10010/video_feed" frameborder="0"></iframe>
         </div>
     </div>
 </div>

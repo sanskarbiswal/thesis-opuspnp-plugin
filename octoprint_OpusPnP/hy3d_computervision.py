@@ -54,6 +54,10 @@ class SMDComponentDetector:
         elif self.platform == 'Linux':
             if self.camera is None:
                 self.camera = TIS.TIS()
+                try:
+                    self.camera.set_property("TriggerMode","Off")
+                except Exception as error:
+                    print(error)
             self.camera.open_device(None, 640, 480, f"{DEVICE_FRAMERATE}", TIS.SinkFormats.BGRA, False,
                    conversion=f"videorate ! video/x-raw,framerate={OUTPUT_FRAMERATE} ! videoconvert ! jpegenc quality=60")
             self.camera.start_pipeline()
@@ -71,6 +75,7 @@ class SMDComponentDetector:
                 return True
             return False
         elif self.platform == 'Linux':
+            self.camera.stop_pipeline()
             # if self.camera is not None:
             #     self.camera.stop_pipeline()
             #     return True
@@ -91,7 +96,7 @@ class SMDComponentDetector:
                 return False
 
     def start(self):
-        logging.info("Starting Thread")
+        logging.info("Starting CV Detector")
         self.running = True
         # self.flask_cv_thread.start()
         # threading.Thread(target=self.capture_and_diaply_frame).start()
@@ -178,7 +183,8 @@ class SMDComponentDetector:
 
     def generate_frame(self):
         try:
-            while self.running:  
+            while True:  
+                # Capture Frame for Windows : Not tested
                 if self.platform == 'Windows' and self.cap != None:
                     ret, frame = self.cap.read()
                     if not ret:
@@ -192,19 +198,24 @@ class SMDComponentDetector:
                         continue
                     
                     fdata = buffer.tobytes()
-                    yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + fdata + b"\r\n")
+                    yield (b"--imagingsource\r\n" b"Content-Type: image/jpeg\r\n\r\n" + fdata + b"\r\n")
 
+                # Capture Frame for Linux
                 if self.platform == 'Linux' and self.camera != None:
-                    if self.camera.snap_image(1000):
-                        # Convert frame to opencv frame
-                        img = self.camera.get_image()
-                        kernel = np.ones((5, 5), np.uint8) # Create a Kernel for OpenCV erode function
-                        img = cv2.erode(img, kernel, iterations=5)
+                    frame = self.camera.snap_image(1000)
+                    if frame is not None:
+                        # # Convert frame to opencv frame
+                        narr = np.frombuffer(frame, dtype=np.uint8)
+                        img = cv2.imdecode(narr, cv2.IMREAD_COLOR)
                         self.cv_frame = img
-                        # ret, buffer = cv2.imencode(".jpg", frame)
-                        # fdata = buffer.tobytes()
-                        yield (b'--frame\r\n'
-                        b'Content-Type: image/jpeg\r\n\r\n' + img + b'\r\n')
+                        # _, _, offset, _ = self.process_frame()
+                        # print(f"Offset: {offset}")
+                        yield (b'--imagingsource\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                    else:
+                        # Return Blank Image
+                        ...
+
         except Exception as e:
             print("Exception ", e)
         finally:
@@ -212,39 +223,28 @@ class SMDComponentDetector:
 
     def start_flask_stream(self):
         self.app.add_url_rule("/video_feed", "video_feed", self.video_feed)
-        self.app.run(host="127.0.0.1", port=10010, use_reloader=False)
+        self.app.run(host="0.0.0.0", port=10010, use_reloader=False)
 
     def video_feed(self):
         return Response(
-            self.generate_frame(), mimetype="multipart/x-mixed-replace; boundary=frame"
+            self.generate_frame(), mimetype="multipart/x-mixed-replace; boundary=imagingsource"
         )
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logging.info("Logging enabled")
     detector = SMDComponentDetector()
+    # cv_th = threading.Thread(target=detector.start_flask_stream)
     try:
         th1 = threading.Thread(target=detector.start_flask_stream)
         th1.start()
         detector.start()
         detector.connect()
-        while detector.running:
-            pass
+        th1.join()
     except KeyboardInterrupt:
-        pass
+        logging.info("Keyboard Interrupt")
+        detector.disconnect()
+        detector.stop()
     finally:
-        print("Exiting Server")
-    # try:
-    #     detector.connect(devices[1])
-    #     try:
-    #         th1 = threading.Thread(target=detector.start_flask_stream)
-    #         th1.start()
-    #         detector.start()
-    #         while detector.running:
-    #             pass
-    #         print("Exiting...")
-    #         th1.join()
-    #     except Exception as e:
-    #         print(e)
-    # except IndexError:
-    #     print("No video capture devices found.")
+        logging.info("Exiting Server")
+

@@ -42,15 +42,16 @@ class OpuspnpPlugin(
 
         self.detector = hy3d_cv.SMDComponentDetector(debug=True)
         self.cv_thread = threading.Thread(target=self.detector.start_flask_stream)
-        self.cv_thread.daemon = True
+        self.cv_thread_running = False
         self.cv_cam_on = False
 
     def on_after_startup(self):
         self._logger.info(50*"#")
         self._logger.info("OpusPnP Plugin Started")
         self._logger.info(50*"#")
-        # self.connect_serial()
         self.cv_thread.start()
+        self.cv_thread_running = True
+        # self.connect_serial()
         self.update_serial_ports()
 
     def update_serial_ports(self):
@@ -83,7 +84,7 @@ class OpuspnpPlugin(
     def on_shutdown(self):
         self.detector.stop()
         self.cv_cam_on = False
-        self._logger.info("Computer Vision Stopped")
+        # self.cv_thread.join()
         self.disconnect_serial()
         if self.detector.platform == 'Linux':
             if self.camera is not None:
@@ -193,8 +194,8 @@ class OpuspnpPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/toggle_cv", methods=["GET"])
     def toggle_cv(self):
         if not self.cv_cam_on:
-            dev = self.detector.list_vc_devices()
             try:
+                dev = self.detector.list_vc_devices()
                 self.detector.start()
                 if self.detector.platform == 'Windows':
                     self.detector.connect(dev[-1])
@@ -285,6 +286,9 @@ class OpuspnpPlugin(
             self._logger.info(f"Sent data: 301 {angle}")
     
     def recv_data(self):
+        """
+        Receive and Parse Serial Data from PICO
+        """
         while self.keep_running:
             if self.ser is not None and self.ser.in_waiting > 0:
                 try:
@@ -303,7 +307,9 @@ class OpuspnpPlugin(
                     self._logger.error("Failed to read data: {}".format(e))
 
     def update_ui(self, valve_state, rig_state):
-        # TODO: Update UI not working
+        """
+        Update UI with the received data
+        """
         vState = True if valve_state == b'1' else False
         rState = True if rig_state == b'1' else False
         self.valve_state = vState
@@ -340,14 +346,6 @@ class OpuspnpPlugin(
     #     self._logger.info(f"Received line: {line}")
     def on_gcode_send(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         first_word = cmd.strip().split(" ")[0]
-        # if first_word == "PNP_VALVE":
-        #     valve_state = cmd.strip().split(" ")[1]
-        #     if valve_state == "1":
-        #         self.send_data(101)
-        #         self.update_ui(True, None)
-        #     else:
-        #         self.send_data(100)
-        #         # self.update_ui(False, None)
         if first_word == "PNP_RIG":
             cmd_state = cmd.strip().split(" ")[1]
             if cmd_state == "1":
