@@ -5,6 +5,8 @@ from flask import Flask, Response, request
 import threading
 import platform
 import logging
+import csv, os
+from datetime import datetime
 
 try:
     from . import TIS
@@ -106,6 +108,21 @@ class SMDComponentDetector:
         self.should_stop.set()
         self.disconnect()
 
+    def log_results(results : list):
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Check if log file exists else create one
+        log_file_name = "pnp_test_log.csv"
+        with open(log_file_name, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            if not os.path.isfile(log_file_name):
+                with open(log_file_name, mode='a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(
+                        ['Timestamp', 'Desired Angle', 'Measured Angle', 'Delta Angle', 'Offset']
+                    )
+            else:
+                writer.writerow([timestamp] + results) 
+
     def process_frame(self, desired_angle=0):
         frame = self.cv_frame
         # cv2.imwrite("processFrame.jpg", self.cv_frame)
@@ -176,6 +193,8 @@ class SMDComponentDetector:
             cv2.circle(bounding_box_img, center, 5, (0, 255, 0), -1)  # Mark bounding box center
 
             # TODO: Save the image to a file
+            log_data = [desired_angle, angle, delta_angle, offset]
+            self.log_results(log_data)
         
         # Return the angle and delta angle and offset
         return angle, delta_angle, offset, bounding_box_img
