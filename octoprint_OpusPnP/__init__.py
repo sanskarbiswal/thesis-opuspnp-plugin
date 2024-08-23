@@ -221,7 +221,7 @@ class OpuspnpPlugin(
             if self.cv_cam_on:
                 if angle == "":
                     angle = 0
-                angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+                angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
                 # print(f"Angle: {angle}, Delta: {delta_angle}, Offset: {offset}")
                 return flask.jsonify({
                     "delta_angle": delta_angle,
