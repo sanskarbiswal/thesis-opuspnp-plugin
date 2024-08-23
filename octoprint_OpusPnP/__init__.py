@@ -230,6 +230,9 @@ class OpuspnpPlugin(
                 })
         except Exception as e:
             print(f"Error Process CV Frame: {e}\ncam_status: {self.cv_cam_on}")
+            return flask.jsonify({
+                "error" : e
+            })
 
     
     @octoprint.plugin.BlueprintPlugin.route("/get_pos_feeder", methods=["GET"])
@@ -406,14 +409,14 @@ class OpuspnpPlugin(
             elif second_word == "CHECK":
                 angle = cmd.strip().split(" ")[2]
                 if self.cv_cam_on:
-                    curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+                    curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
                     self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
                     if delta_angle > 1:
                         tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
                         # Send delta angle to the rig
                         self.send_angle_data(tx_angle)
                         # Check if the angle is fixed
-                        curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(angle))
+                        curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
                         tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
                         # Send delta angle to the rig
                         self.send_angle_data(tx_angle)
