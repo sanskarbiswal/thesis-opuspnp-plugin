@@ -221,6 +221,7 @@ class OpuspnpPlugin(
             if self.cv_cam_on:
                 if angle == "":
                     angle = 0
+                self.detector.capture_frame_onLinux()
                 angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
                 # print(f"Angle: {angle}, Delta: {delta_angle}, Offset: {offset}")
                 return flask.jsonify({
@@ -406,20 +407,24 @@ class OpuspnpPlugin(
             elif second_word == "POS":
                 ...
                 # TODO: Implement Goto Position from Settings data
-            elif second_word == "CHECK":
-                angle = cmd.strip().split(" ")[2]
-                if self.cv_cam_on:
-                    curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
-                    self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
-                    if delta_angle > 1:
-                        tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
-                        # Send delta angle to the rig
-                        self.send_angle_data(tx_angle)
-                        # Check if the angle is fixed
-                        curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
-                        tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
-                        # Send delta angle to the rig
-                        self.send_angle_data(tx_angle)
+            # elif second_word == "CHECK":
+            #     angle = cmd.strip().split(" ")[2]
+            #     if self.cv_cam_on:
+            #         self.detector.capture_frame_onLinux()
+            #         try:
+            #             curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
+            #             self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
+            #             if delta_angle > 1:
+            #                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+            #                 # Send delta angle to the rig
+            #                 self.send_angle_data(tx_angle)
+            #                 # Check if the angle is fixed
+            #                 curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
+            #                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+            #                 # Send delta angle to the rig
+            #                 self.send_angle_data(tx_angle)
+            #         except:
+            #             self._logger.info("Error on PNP CHECK")
             elif second_word == "END":
                 # Change to tool T2
                 self._printer.commands("T2")
@@ -437,6 +442,27 @@ class OpuspnpPlugin(
                     self.update_ui(True, None)
                 else:
                     self.send_data(100)
+        
+            elif first_word == "PNP_CAM":
+                second_word = cmd.strip().split(" ")[1]
+                if second_word == "CHECK":
+                    angle = cmd.strip().split(" ")[2]
+                    if self.cv_cam_on:
+                        self.detector.capture_frame_onLinux()
+                        try:
+                            curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
+                            self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
+                            if delta_angle > 1:
+                                tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+                                # Send delta angle to the rig
+                                self.send_angle_data(tx_angle)
+                                # Check if the angle is fixed
+                                curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
+                                tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+                                # Send delta angle to the rig
+                                self.send_angle_data(tx_angle)
+                        except:
+                            self._logger.info("Error on PNP CHECK")
 
         return line
 

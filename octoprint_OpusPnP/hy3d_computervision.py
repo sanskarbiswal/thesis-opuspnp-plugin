@@ -135,7 +135,7 @@ class SMDComponentDetector:
         # _, frame = cv2.imread("processFrame.jpg")
         # Crop Image
         height, width = frame.shape[:2]
-        crop_size = 400
+        crop_size = 600
         center_x, center_y = width // 2, height // 2
         # Define Cropping Area
         x1 = max(center_x - crop_size // 2, 0)
@@ -205,6 +205,21 @@ class SMDComponentDetector:
         # Return the angle and delta angle and offset
         return angle, delta_angle, offset, bounding_box_img
 
+    def capture_frame_onLinux(self):
+        """
+        Function to capture img in realtime
+        Use only on Linux OS
+        """
+        try:    
+            frame=self.camera.snap_image(1000)
+            if frame is not None:
+                # # Convert frame to opencv frame
+                narr = np.frombuffer(frame, dtype=np.uint8)
+                img = cv2.imdecode(narr, cv2.IMREAD_COLOR)
+                self.cv_frame = img
+        except:
+            print("Error: Snap Image")
+
 
     def generate_frame(self):
         try:
@@ -230,23 +245,9 @@ class SMDComponentDetector:
                     frame = self.camera.snap_image(1000)
                     if frame is not None:
                         # # Convert frame to opencv frame
-                        narr = np.frombuffer(frame, dtype=np.uint8)
-                        img = cv2.imdecode(narr, cv2.IMREAD_COLOR)
-                        self.cv_frame = img
-                        # Encode the frame as JPEG
-                        ret, jpeg = cv2.imencode('.jpg', img)
-                        # Draw the x and y axis reference lines
-                        height, width = img.shape[:2]
-                        # Calculate the center of the frame
-                        center_x, center_y = width // 2, height // 2
-
-                        # Define the color (BGR) and thickness of the lines
-                        color = (0, 0, 255)  # red color
-                        thickness = 1  # thickness of the lines
-                        # Draw the horizontal line across the center
-                        cv2.line(img, (0, center_y), (width, center_y), color, thickness)
-                        # Draw the vertical line across the center
-                        cv2.line(img, (center_x, 0), (center_x, height), color, thickness)
+                        # narr = np.frombuffer(frame, dtype=np.uint8)
+                        # img = cv2.imdecode(narr, cv2.IMREAD_COLOR)
+                        # self.cv_frame = img
                         # _, _, offset, bimg = self.process_frame()
                         # print(f"Offset: {offset}")
                         yield (b'--imagingsource\r\n'
