@@ -10,3 +10,5 @@ dist
 
 dev2.py
 index.html
+pnp_test_log.csv
+pnp_logs/*

@@ -7,6 +7,7 @@ import platform
 import logging
 import csv, os
 from datetime import datetime
+import traceback
 
 try:
     from . import TIS
@@ -108,20 +109,25 @@ class SMDComponentDetector:
         self.should_stop.set()
         self.disconnect()
 
-    def log_results(results : list):
+    def log_results(self, results : list, img):
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # Check if log file exists else create one
-        log_file_name = "pnp_test_log.csv"
+        log_file_name = "pnp_logs/pnp_test_log.csv"
+        if not os.path.exists("pnp_logs/"):
+            os.makedirs("pnp_logs/")
+        if not os.path.isfile(log_file_name):
+            with open(log_file_name, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(
+                    ['Timestamp', 'Desired Angle', 'Measured Angle', 'Delta Angle', 'Offset']
+                )
+        # Write the results to the log file        
         with open(log_file_name, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            if not os.path.isfile(log_file_name):
-                with open(log_file_name, mode='a', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerow(
-                        ['Timestamp', 'Desired Angle', 'Measured Angle', 'Delta Angle', 'Offset']
-                    )
-            else:
+                writer = csv.writer(file)
                 writer.writerow([timestamp] + results) 
+        # Save the image to a file
+        im_path = f"pnp_logs/{timestamp}.png"
+        cv2.imwrite(im_path, img)
 
     def process_frame(self, desired_angle=0):
         frame = self.cv_frame
@@ -194,7 +200,7 @@ class SMDComponentDetector:
 
             # TODO: Save the image to a file
             log_data = [desired_angle, angle, delta_angle, offset]
-            self.log_results(log_data)
+            self.log_results(log_data, bounding_box_img)
         
         # Return the angle and delta angle and offset
         return angle, delta_angle, offset, bounding_box_img
@@ -227,7 +233,21 @@ class SMDComponentDetector:
                         narr = np.frombuffer(frame, dtype=np.uint8)
                         img = cv2.imdecode(narr, cv2.IMREAD_COLOR)
                         self.cv_frame = img
-                        # _, _, offset, _ = self.process_frame()
+                        # Encode the frame as JPEG
+                        ret, jpeg = cv2.imencode('.jpg', img)
+                        # Draw the x and y axis reference lines
+                        height, width = img.shape[:2]
+                        # Calculate the center of the frame
+                        center_x, center_y = width // 2, height // 2
+
+                        # Define the color (BGR) and thickness of the lines
+                        color = (0, 0, 255)  # red color
+                        thickness = 1  # thickness of the lines
+                        # Draw the horizontal line across the center
+                        cv2.line(img, (0, center_y), (width, center_y), color, thickness)
+                        # Draw the vertical line across the center
+                        cv2.line(img, (center_x, 0), (center_x, height), color, thickness)
+                        # _, _, offset, bimg = self.process_frame()
                         # print(f"Offset: {offset}")
                         yield (b'--imagingsource\r\n'
                         b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
@@ -236,7 +256,7 @@ class SMDComponentDetector:
                         ...
 
         except Exception as e:
-            print("Exception ", e)
+            print(f"Exception {e}\n{traceback.format_exc()}")
         finally:
             print("Stream Closed!!!")
 
