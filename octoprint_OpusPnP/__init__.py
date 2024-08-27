@@ -11,7 +11,7 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 import flask
-import serial, threading, struct, platform
+import serial, threading, struct, platform, traceback
 
 from serial.tools import list_ports
 
@@ -46,7 +46,9 @@ class OpuspnpPlugin(
         self.cv_cam_on = False
 
         self.place_offsets = (None, None)
-        self.ppm = 140.905 # Pixels per mm
+        self.ppm = 81.875 # Pixels per mm
+
+        self.check_angle = None
 
     def on_after_startup(self):
         self._logger.info(50*"#")
@@ -413,6 +415,54 @@ class OpuspnpPlugin(
             elif second_word == "END":
                 # Change to tool T2
                 self._printer.commands("T2")
+            # elif second_word == "CHECK":
+            #     angle = cmd.strip().split(" ")[2]
+            #     if self.cv_cam_on:
+            #         self.detector.capture_frame_onLinux()
+            #         try:
+            #             curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
+            #             self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
+            #             if delta_angle > 1:
+            #                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+            #                 # Send delta angle to the rig
+            #                 self.send_angle_data(tx_angle)
+            #                 # Check if the angle is fixed
+            #                 curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
+            #                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+            #                 # Send delta angle to the rig
+            #                 self.send_angle_data(tx_angle)
+            #             self.place_offsets = (offset[0]/self.ppm, offset[1]/self.ppm)
+            #         except:
+            #             self._logger.info(f"Error on PNP CHECK\n{traceback.format_exc()}")
+            #             self.place_offsets = (None, None)
+        
+        elif first_word == "PNP_PLACE":
+            # PNP_PLACE Xx3 Yy3
+            # Verify from Camera Offset and Angle
+            try:
+                curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(self.check_angle))
+                self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
+                self.place_offsets = (offset[0]/self.ppm, offset[1]/self.ppm)
+                if abs(delta_angle) > 3:
+                    tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
+                    # Send delta angle to the rig
+                    self.send_angle_data(tx_angle)
+                    self.check_angle = None
+                    self._printer.commands("G4 S5")
+            except:
+                self._logger.info(f"Error on PNP CHECK\n{traceback.format_exc()}")
+                self.place_offsets = (None, None)
+                self.check_angle = None
+
+            second_word = cmd.strip().split(" ")[1]
+            third_word = cmd.strip().split(" ")[2]
+            x = float(second_word[1:])
+            y = float(third_word[1:])
+            if self.place_offsets != (None, None):
+                x += self.place_offsets[0]
+                y += self.place_offsets[1]
+                self.place_offsets = (None, None)
+            self._printer.commands(f"G1 X{x} Y{y} {cmd.strip().split(' ')[3]}")
                     
 
     def on_gcode_received(self, comm, line, *args, **kwargs):
@@ -432,35 +482,10 @@ class OpuspnpPlugin(
                 second_word = cmd.strip().split(" ")[1]
                 if second_word == "CHECK":
                     angle = cmd.strip().split(" ")[2]
+                    self.check_angle = float(angle)
                     if self.cv_cam_on:
                         self.detector.capture_frame_onLinux()
-                        try:
-                            curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
-                            self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
-                            if delta_angle > 1:
-                                tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
-                                # Send delta angle to the rig
-                                self.send_angle_data(tx_angle)
-                                # Check if the angle is fixed
-                                curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
-                                tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
-                                # Send delta angle to the rig
-                                self.send_angle_data(tx_angle)
-                            self.place_offsets = (offset[0]/self.ppm, offset[1]/self.ppm)
-                        except:
-                            self._logger.info("Error on PNP CHECK")
-                            self.place_offsets = (None, None)
-            
-            elif first_word == "PNP_PLACE":
-                # PNP_PLACE Xx3 Yy3
-                second_word = cmd.strip().split(" ")[1]
-                third_word = cmd.strip().split(" ")[2]
-                x = float(second_word[1:])
-                y = float(third_word[1:])
-                if self.place_offsets != (None, None):
-                    x += self.place_offsets[0]
-                    y += self.place_offsets[1]
-                self._printer.commands(f"G1 X{x} Y{y} {cmd.strip().split(" ")[3]}")
+                
 
         return line
 

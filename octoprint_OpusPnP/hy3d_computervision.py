@@ -18,6 +18,12 @@ except:
 DEVICE_FRAMERATE = "30/1"
 OUTPUT_FRAMERATE = "30/1"
 
+def closest_value(val, op1, op2):
+    if abs(val-op1) < abs(val-op2):
+        return op1
+    else:
+        return op2
+
 class SMDComponentDetector:
     def __init__(self, debug=False):
         self.cap = None
@@ -157,7 +163,10 @@ class SMDComponentDetector:
         contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
 
         # Merge the top 5 contours into one
-        merged_contour = np.vstack(contours)
+        try:
+            merged_contour = np.vstack(contours)
+        except:
+            self.log_results([-1, -1, -1,(-1,-1)], gray)
 
         # Create a bounding box around the merged contour
         rect = cv2.minAreaRect(merged_contour)
@@ -165,11 +174,22 @@ class SMDComponentDetector:
         box = np.intp(box)
 
         bounding_box_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+        r_width, r_height = rect[1][0], rect[1][1]
+        angle = rect[2]
+        if r_width < r_height:
+            if closest_value(desired_angle, 90, -90) == -90:
+                angle -= 90
+            else:
+                angle += 90
+        else:
+            if closest_value(desired_angle,0,180) == 180:
+                angle -= 180
+            else:
+                angle += 180
 
         # Calculate the angle of orientation
-        angle = rect[2]
-        if angle < -45:
-            angle += 90
+        # if angle < -45:
+        #     angle += 90
         
         # Restrict angle to 2 decimal places
         angle = round(angle, 2)
