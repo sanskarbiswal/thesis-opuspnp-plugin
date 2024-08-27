@@ -258,8 +258,8 @@ class SMDComponentDetector:
 
         except Exception as e:
             print(f"Exception {e}\n{traceback.format_exc()}")
-        finally:
             print("Stream Closed!!!")
+            
 
     def start_flask_stream(self):
         self.app.add_url_rule("/video_feed", "video_feed", self.video_feed)

@@ -45,6 +45,9 @@ class OpuspnpPlugin(
         self.cv_thread_running = False
         self.cv_cam_on = False
 
+        self.place_offsets = (None, None)
+        self.ppm = 140.905 # Pixels per mm
+
     def on_after_startup(self):
         self._logger.info(50*"#")
         self._logger.info("OpusPnP Plugin Started")
@@ -407,24 +410,6 @@ class OpuspnpPlugin(
             elif second_word == "POS":
                 ...
                 # TODO: Implement Goto Position from Settings data
-            # elif second_word == "CHECK":
-            #     angle = cmd.strip().split(" ")[2]
-            #     if self.cv_cam_on:
-            #         self.detector.capture_frame_onLinux()
-            #         try:
-            #             curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
-            #             self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
-            #             if delta_angle > 1:
-            #                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
-            #                 # Send delta angle to the rig
-            #                 self.send_angle_data(tx_angle)
-            #                 # Check if the angle is fixed
-            #                 curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(float(angle)))
-            #                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
-            #                 # Send delta angle to the rig
-            #                 self.send_angle_data(tx_angle)
-            #         except:
-            #             self._logger.info("Error on PNP CHECK")
             elif second_word == "END":
                 # Change to tool T2
                 self._printer.commands("T2")
@@ -461,8 +446,21 @@ class OpuspnpPlugin(
                                 tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
                                 # Send delta angle to the rig
                                 self.send_angle_data(tx_angle)
+                            self.place_offsets = (offset[0]/self.ppm, offset[1]/self.ppm)
                         except:
                             self._logger.info("Error on PNP CHECK")
+                            self.place_offsets = (None, None)
+            
+            elif first_word == "PNP_PLACE":
+                # PNP_PLACE Xx3 Yy3
+                second_word = cmd.strip().split(" ")[1]
+                third_word = cmd.strip().split(" ")[2]
+                x = float(second_word[1:])
+                y = float(third_word[1:])
+                if self.place_offsets != (None, None):
+                    x += self.place_offsets[0]
+                    y += self.place_offsets[1]
+                self._printer.commands(f"G1 X{x} Y{y} {cmd.strip().split(" ")[3]}")
 
         return line
 
