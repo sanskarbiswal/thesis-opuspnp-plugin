@@ -46,7 +46,7 @@ class OpuspnpPlugin(
         self.cv_cam_on = False
 
         self.place_offsets = (None, None)
-        self.ppm = 81.875 # Pixels per mm
+        self.ppm = 78.839 # Pixels per mm
 
         self.check_angle = None
 
@@ -443,7 +443,7 @@ class OpuspnpPlugin(
                 curr_angle, delta_angle, offset, bounding_box_img = self.detector.process_frame(int(self.check_angle))
                 self._logger.info(f"Angle: {curr_angle}, Delta: {delta_angle}, Offset: {offset}")
                 self.place_offsets = (offset[0]/self.ppm, offset[1]/self.ppm)
-                if abs(delta_angle) > 3:
+                if abs(delta_angle) > 2 and (delta_angle >- 10 and delta_angle < 10):
                     tx_angle = int(float(delta_angle) * 1600 / 360) # Steps per 360 degree = 1600
                     # Send delta angle to the rig
                     self.send_angle_data(tx_angle)
@@ -459,11 +459,11 @@ class OpuspnpPlugin(
             x = float(second_word[1:])
             y = float(third_word[1:])
             if self.place_offsets != (None, None):
-                x += self.place_offsets[0]
-                y += self.place_offsets[1]
+                x += (-1)*self.place_offsets[0]
+                y += (-1)*self.place_offsets[1]
                 self.place_offsets = (None, None)
             self._printer.commands(f"G1 X{x} Y{y} {cmd.strip().split(' ')[3]}")
-                    
+            self._logger.info(f"{second_word, third_word}: Fixed to {x, y}")        
 
     def on_gcode_received(self, comm, line, *args, **kwargs):
         if "PNP" in line:

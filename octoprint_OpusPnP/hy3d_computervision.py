@@ -167,6 +167,7 @@ class SMDComponentDetector:
             merged_contour = np.vstack(contours)
         except:
             self.log_results([-1, -1, -1,(-1,-1)], gray)
+            return -1, -1, (-1, -1), None
 
         # Create a bounding box around the merged contour
         rect = cv2.minAreaRect(merged_contour)
@@ -175,6 +176,8 @@ class SMDComponentDetector:
 
         bounding_box_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
         r_width, r_height = rect[1][0], rect[1][1]
+
+        # Calculate the angle of orientation
         angle = rect[2]
         if r_width < r_height:
             if closest_value(desired_angle, 90, -90) == -90:
@@ -184,10 +187,19 @@ class SMDComponentDetector:
         else:
             if closest_value(desired_angle,0,180) == 180:
                 angle -= 180
+            elif closest_value(desired_angle,-180,0) == -180:
+                angle -= 180
             else:
                 angle += 180
-
-        # Calculate the angle of orientation
+        # Ensure correct orinetation        
+        if (angle < 0 and desired_angle > 0) or (angle > 0 and desired_angle < 0):
+            angle *= -1
+        # Redirect to closest possible angle
+        if angle < 0:
+            angle = angle % -180
+        else:
+            angle = angle % 180
+        
         # if angle < -45:
         #     angle += 90
         
@@ -200,15 +212,22 @@ class SMDComponentDetector:
         img_center = (bounding_box_img.shape[1] // 2, bounding_box_img.shape[0] // 2)
         # Calculate the offset between the bounding box center and the image center
         offset = (center[0] - img_center[0], center[1] - img_center[1])
+        ppm = 78.839 # Pixels per mm
+        if offset[0]>1.1*ppm :
+            offset[0] *= 0.75
+        if offset[1]> 1.1*ppm :
+            offset[1] *= 0.5
+        
+        # print(f"Box {[box]}")
 
         if self.debug_state:
             # Draw the bounding box on the cropped image
-            cv2.drawContours(cropped_img, [box], 0, (0, 255, 0), 2)
+            cv2.drawContours(cropped_img, [box], 0, (255, 255, 0), 1)
             # Embed the angle and delta angle in the image
-            cv2.putText(bounding_box_img, f'Current Angle: {angle:.2f} degrees', (10, 30), cv2.FONT_HERSHEY_PLAIN , 1, (0, 255, 255), 1)
-            cv2.putText(bounding_box_img, f'Desired Angle: {desired_angle:.2f} degrees', (10, 70), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 255), 1)
-            cv2.putText(bounding_box_img, f'Delta Angle: {delta_angle:.2f} degrees', (10, 110), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 255), 1)
-            cv2.putText(bounding_box_img, f'Offset: {offset}', (10, 150), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 255), 1)
+            cv2.putText(bounding_box_img, f'Current Angle: {angle:.2f} degrees', (10, 30), cv2.FONT_HERSHEY_PLAIN , 1, (255, 0, 0), 1)
+            cv2.putText(bounding_box_img, f'Desired Angle: {desired_angle:.2f} degrees', (10, 70), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 1)
+            cv2.putText(bounding_box_img, f'Delta Angle: {delta_angle:.2f} degrees', (10, 110), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 1)
+            cv2.putText(bounding_box_img, f'Offset: {offset}', (10, 150), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 1)
             # Draw the x and y axis reference lines
             cv2.line(bounding_box_img, (center[0], 0), (center[0], frame.shape[0]), (255, 0, 0), 1)
             cv2.line(bounding_box_img, (0, center[1]), (frame.shape[1], center[1]), (255, 0, 0), 1)
@@ -231,7 +250,7 @@ class SMDComponentDetector:
         Use only on Linux OS
         """
         try:    
-            frame=self.camera.snap_image(1000)
+            frame=self.camera.snap_image(2)
             if frame is not None:
                 # # Convert frame to opencv frame
                 narr = np.frombuffer(frame, dtype=np.uint8)
