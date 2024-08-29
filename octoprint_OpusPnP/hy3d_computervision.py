@@ -153,26 +153,30 @@ class SMDComponentDetector:
         gray = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
 
         th_low = 70
-        th_high = 80
+        th_high = 105
         # Edge Detection with Canny Edge Detection
         edges = cv2.Canny(gray, th_low, th_high)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+        closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
         # Find contours from the edges
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Sort contours by area and keep only the top 5
         contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
 
         # Merge the top 5 contours into one
-        try:
-            merged_contour = np.vstack(contours)
-        except:
-            self.log_results([-1, -1, -1,(-1,-1)], gray)
-            return -1, -1, (-1, -1), None
+        # try:
+        #     merged_contour = np.vstack(contours)
+        # except:
+        #     self.log_results([-1, -1, -1,(-1,-1)], gray)
+        #     return -1, -1, (-1, -1), None
 
         # Create a bounding box around the merged contour
-        rect = cv2.minAreaRect(merged_contour)
+        # rect = cv2.minAreaRect(merged_contour)
+        rect = cv2.minAreaRect(contours[0])
         box = cv2.boxPoints(rect)
-        box = np.intp(box)
+        box = np.intp(box)       
 
         bounding_box_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
         r_width, r_height = rect[1][0], rect[1][1]
@@ -213,16 +217,16 @@ class SMDComponentDetector:
         # Calculate the offset between the bounding box center and the image center
         offset = (center[0] - img_center[0], center[1] - img_center[1])
         ppm = 78.839 # Pixels per mm
-        if offset[0]>1.1*ppm :
-            offset[0] *= 0.75
-        if offset[1]> 1.1*ppm :
-            offset[1] *= 0.5
+        # if offset[0]>1.1*ppm :
+        #     offset = (offset[0]*0.75, offset[1])
+        # if offset[1]> 1.1*ppm :
+        #     offset = (offset[0], offset[1]*0.5)
         
         # print(f"Box {[box]}")
 
         if self.debug_state:
             # Draw the bounding box on the cropped image
-            cv2.drawContours(cropped_img, [box], 0, (255, 255, 0), 1)
+            cv2.drawContours(bounding_box_img, [box], 0, (255, 255, 0), 1)
             # Embed the angle and delta angle in the image
             cv2.putText(bounding_box_img, f'Current Angle: {angle:.2f} degrees', (10, 30), cv2.FONT_HERSHEY_PLAIN , 1, (255, 0, 0), 1)
             cv2.putText(bounding_box_img, f'Desired Angle: {desired_angle:.2f} degrees', (10, 70), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 1)
